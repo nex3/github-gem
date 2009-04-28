@@ -58,7 +58,11 @@ module GitHub
     end
 
     def sh(*command)
-      Shell.new(*command).run
+      str = command.join(" ")
+      GitHub.debug "sh: #{str}"
+      tap(IO.popen(*command) { |io| io.read.strip }) do
+        raise "command failed: #{str}" unless $?.success?
+      end
     end
 
     def die(message)
@@ -80,40 +84,6 @@ module GitHub
 
     def current_user?(user)
       user == github_user || user == shell_user
-    end
-
-    class Shell < String
-      attr_reader :error
-      attr_reader :out
-
-      def initialize(*command)
-        @command = command
-      end
-
-      def run
-        GitHub.debug "sh: #{command}"
-        _, out, err = Open3.popen3(*@command)
-
-        out = out.read.strip
-        err = err.read.strip
-
-        replace @error = err if err.any?
-        replace @out = out if out.any?
-
-        self
-      end
-
-      def command
-        @command.join(' ')
-      end
-
-      def error?
-        !!@error
-      end
-
-      def out?
-        !!@out
-      end
     end
   end
 
